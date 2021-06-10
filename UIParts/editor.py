@@ -25,7 +25,7 @@ class PlainTab(wx.Panel):
 
 class EditorTab(wx.Panel):
 	""" Text editor tab """
-	def __init__(self, parent, file=None):
+	def __init__(self, parent, eI, file=None):
 		super(EditorTab, self).__init__(parent)
 
 		self.jetbrainsMono = wx.Font(11, wx.MODERN, wx.NORMAL, wx.NORMAL, False, "JetBrains Mono")
@@ -35,6 +35,7 @@ class EditorTab(wx.Panel):
 		sizer = wx.BoxSizer()
 		sizer.Add(self.textInput, 1, wx.EXPAND)
 		self.SetSizer(sizer)
+		self.eI = eI
 
 	def getFileName(self):
 		if self.file:
@@ -44,7 +45,28 @@ class EditorTab(wx.Panel):
 	def refreshTextbox(self):
 		if not self.textInput.IsModified():
 			if self.file != "Untitled":
+				self.eI.statusBar.SetStatusText(f"Reloading {self.file}")
 				self.textInput.LoadFile(self.file)
+				self.eI.statusBar.SetStatusText("Ready")
+
+	def writeChangesToFile(self, saveAsDifferentFile=False):
+		if saveAsDifferentFile or self.file == "Untitled":
+			with wx.FileDialog(self, "Open StoryScript file", wildcard="StoryScript files (*.sts)|*.sts|All files (*.*)|*.*",
+					   style=wx.FD_SAVE) as fileDialog:
+
+				if fileDialog.ShowModal() == wx.ID_CANCEL:
+					return	# the user changed their mind
+
+				# Proceed loading the file chosen by the user
+				pathname = fileDialog.GetPath()
+			self.file = pathname
+			self.eI.statusBar.SetStatusText(f"Saving {self.file}")
+			self.textInput.SaveFile(self.file)
+			self.eI.statusBar.SetStatusText("Ready")
+		else:
+			self.eI.statusBar.SetStatusText(f"Saving {self.file}")
+			self.textInput.SaveFile(self.file)
+			self.eI.statusBar.SetStatusText("Ready")
 
 class EditorFrame(wx.Frame):
 	def __init__(self, parent, title):
@@ -67,7 +89,10 @@ class EditorFrame(wx.Frame):
 		menu = wx.MenuItem(fileMenu, id=3, text="Open Folder\tAlt+O")
 		fileMenu.Append(menu)
 		self.Bind(wx.EVT_MENU, self.OpenFolder, menu)
-		menu = wx.MenuItem(fileMenu, id=4, text="Quit\tCtrl+F4")
+		menu = wx.MenuItem(fileMenu, id=3, text="Save file\tCtrl+S")
+		fileMenu.Append(menu)
+		self.Bind(wx.EVT_MENU, self.SaveFile, menu)
+		menu = wx.MenuItem(fileMenu, id=5, text="Quit\tCtrl+F4")
 		fileMenu.Append(menu)
 		self.Bind(wx.EVT_MENU, self.OnQuit, menu)
 		menubar.Append(fileMenu, "&File")
@@ -84,7 +109,7 @@ class EditorFrame(wx.Frame):
 												(wx.ACCEL_CTRL, ord('O'), openFile)])
 
 		helpMenu = wx.Menu()
-		about = wx.MenuItem(helpMenu, id=5, text="About")
+		about = wx.MenuItem(helpMenu, id=6, text="About")
 		helpMenu.Append(about)
 		self.Bind(wx.EVT_MENU, self.aboutWindow, about)
 		menubar.Append(helpMenu, "&Help")
@@ -119,8 +144,11 @@ class EditorFrame(wx.Frame):
 		self.notebook.GetCurrentPage().refreshTextbox()
 
 	def NewFile(self, event):
-		self.editorTabs.append(EditorTab(self.notebook, "Untitled"))
+		self.editorTabs.append(EditorTab(self.notebook, self, "Untitled"))
 		self.notebook.AddPage(self.editorTabs[len(self.editorTabs) - 1], "Untitled")
+
+	def SaveFile(self, event):
+		self.notebook.GetCurrentPage().writeChangesToFile()
 
 	def OpenFile(self, event):
 		with wx.FileDialog(self, "Open StoryScript file", wildcard="StoryScript files (*.sts)|*.sts|All files (*.*)|*.*",
@@ -131,7 +159,7 @@ class EditorFrame(wx.Frame):
 
 			# Proceed loading the file chosen by the user
 			pathname = fileDialog.GetPath()
-		self.editorTabs.append(EditorTab(self.notebook, pathname))
+		self.editorTabs.append(EditorTab(self.notebook, self, pathname))
 		self.notebook.AddPage(self.editorTabs[len(self.editorTabs) - 1], pathname)
 		self.editorTabs[len(self.editorTabs) - 1].refreshTextbox()
 
