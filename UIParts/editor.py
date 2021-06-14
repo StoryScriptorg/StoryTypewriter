@@ -50,6 +50,10 @@ class EditorTab(wx.Panel):
 				self.eI.statusBar.SetStatusText("Ready")
 
 	def writeChangesToFile(self, saveAsDifferentFile=False):
+		"""
+		Write all changes do to the Text box to file
+		[PARAMETER] saveAsDifferentFile: Save as a different file or not. Set to false by default.
+		"""
 		if saveAsDifferentFile or self.file == "Untitled":
 			with wx.FileDialog(self, "Open StoryScript file", wildcard="StoryScript files (*.sts)|*.sts|All files (*.*)|*.*",
 					   style=wx.FD_SAVE) as fileDialog:
@@ -62,6 +66,7 @@ class EditorTab(wx.Panel):
 			self.file = pathname
 			self.eI.statusBar.SetStatusText(f"Saving {self.file}")
 			self.textInput.SaveFile(self.file)
+			self.eI.statusBar.SetStatusText(f"Renaming tabs...")
 			self.eI.statusBar.SetStatusText("Ready")
 		else:
 			self.eI.statusBar.SetStatusText(f"Saving {self.file}")
@@ -89,7 +94,7 @@ class EditorFrame(wx.Frame):
 		menu = wx.MenuItem(fileMenu, id=3, text="Open Folder\tAlt+O")
 		fileMenu.Append(menu)
 		self.Bind(wx.EVT_MENU, self.OpenFolder, menu)
-		menu = wx.MenuItem(fileMenu, id=3, text="Save file\tCtrl+S")
+		menu = wx.MenuItem(fileMenu, id=4, text="Save file\tCtrl+S")
 		fileMenu.Append(menu)
 		self.Bind(wx.EVT_MENU, self.SaveFile, menu)
 		menu = wx.MenuItem(fileMenu, id=5, text="Quit\tCtrl+F4")
@@ -101,11 +106,14 @@ class EditorFrame(wx.Frame):
 		newfile = wx.NewId()
 		openFolder = wx.NewId()
 		openFile = wx.NewId()
+		saveFile = wx.NewId()
 		self.Bind(wx.EVT_MENU, self.NewFile, id=newfile)
 		self.Bind(wx.EVT_MENU, self.OpenFolder, id=openFolder)
 		self.Bind(wx.EVT_MENU, self.OpenFile, id=openFile)
+		self.Bind(wx.EVT_MENU, self.SaveFile, id=saveFile)
 		self.accel_table = wx.AcceleratorTable([(wx.ACCEL_CTRL, ord('N'), newfile),
 												(wx.ACCEL_ALT, ord('O'), openFolder),
+												(wx.ACCEL_CTRL, ord('S'), saveFile),
 												(wx.ACCEL_CTRL, ord('O'), openFile)])
 
 		helpMenu = wx.Menu()
@@ -116,7 +124,7 @@ class EditorFrame(wx.Frame):
 		
 		self.SetMenuBar(menubar)
 
-		self.notebook = wx.lib.agw.aui.auibook.AuiNotebook(self.panel, agwStyle=wx.lib.agw.aui.auibook.AUI_NB_CLOSE_ON_ALL_TABS)
+		self.notebook = wx.lib.agw.aui.auibook.AuiNotebook(self.panel, agwStyle=wx.lib.agw.aui.auibook.AUI_NB_CLOSE_ON_ALL_TABS | wx.lib.agw.aui.auibook.AUI_NB_TAB_MOVE | wx.lib.agw.aui.auibook.AUI_NB_WINDOWLIST_BUTTON | wx.lib.agw.aui.auibook.AUI_NB_SCROLL_BUTTONS)
 		self.notebook.SetFont(self.smallFont)
 		self.Bind(wx.lib.agw.aui.auibook.EVT_AUINOTEBOOK_PAGE_CHANGED, self.OnTabChanged, self.notebook)
 
