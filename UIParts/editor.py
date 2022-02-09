@@ -1,8 +1,10 @@
 import wx
+import wx.stc
 import wx.lib.agw.aui
 import tkinter as tk
 from PIL import ImageTk, Image
 from UIParts.data import *
+import os
 
 class PlainTab(wx.Panel):
 	def __init__(self, parent, eI):
@@ -20,17 +22,32 @@ class PlainTab(wx.Panel):
 		eI.Bind(wx.EVT_BUTTON, eI.OpenFolder, self.openFolderButton)
 		self.file = "Welcome"
 
-	def getFileName(self): return self.file
-	def refreshTextbox(self): pass
+	def getFileName(self): 
+		return self.file
+
+	def refreshTextbox(self):
+		pass # Note: This method exist due to error protection.
 
 class EditorTab(wx.Panel):
 	""" Text editor tab """
 	def __init__(self, parent, eI, file=None):
 		super(EditorTab, self).__init__(parent)
 
-		self.jetbrainsMono = wx.Font(11, wx.MODERN, wx.NORMAL, wx.NORMAL, False, "JetBrains Mono")
-		self.textInput = wx.TextCtrl(self, style=wx.TE_MULTILINE)
-		self.textInput.SetFont(self.jetbrainsMono)
+		self.jetbrainsMono = wx.Font(10, wx.MODERN, wx.NORMAL, wx.NORMAL, False, "JetBrains Mono")
+		self.textInput = wx.stc.StyledTextCtrl(self)
+		self.textInput.StyleSetFont(0, self.jetbrainsMono)
+
+		# Indentation
+		self.textInput.SetIndent(4)
+		self.textInput.SetIndentationGuides(True)
+		self.textInput.SetBackSpaceUnIndents(True)
+		self.textInput.SetTabIndents(True)
+		self.textInput.SetTabWidth(4)
+		self.textInput.SetUseTabs(False)
+
+		# Whitespace
+		self.textInput.SetViewWhiteSpace(False)
+		
 		self.file = file
 		sizer = wx.BoxSizer()
 		sizer.Add(self.textInput, 1, wx.EXPAND)
@@ -38,16 +55,13 @@ class EditorTab(wx.Panel):
 		self.eI = eI
 
 	def getFileName(self):
-		if self.file:
-			return self.file
-		else: return "Untitled"
+		return self.file or "Untitled"
 
 	def refreshTextbox(self):
-		if not self.textInput.IsModified():
-			if self.file != "Untitled":
-				self.eI.statusBar.SetStatusText(f"Reloading {self.file}")
-				self.textInput.LoadFile(self.file)
-				self.eI.statusBar.SetStatusText("Ready")
+		if not self.textInput.IsModified() and self.file != "Untitled":
+			self.eI.statusBar.SetStatusText(f"Reloading {self.file}")
+			self.textInput.LoadFile(self.file)
+			self.eI.statusBar.SetStatusText("Ready")
 
 	def writeChangesToFile(self, saveAsDifferentFile=False):
 		"""
@@ -55,7 +69,7 @@ class EditorTab(wx.Panel):
 		[PARAMETER] saveAsDifferentFile: Save as a different file or not. Set to false by default.
 		"""
 		if saveAsDifferentFile or self.file == "Untitled":
-			with wx.FileDialog(self, "Open StoryScript file", wildcard="StoryScript files (*.sts)|*.sts|All files (*.*)|*.*",
+			with wx.FileDialog(self, "Open file", wildcard="StoryScript files (*.sts)|*.sts|Vivian files (*.viv)|*.viv|Crypt files (*.crypt)|*.crypt|All files (*.*)|*.*",
 					   style=wx.FD_SAVE) as fileDialog:
 
 				if fileDialog.ShowModal() == wx.ID_CANCEL:
@@ -66,17 +80,17 @@ class EditorTab(wx.Panel):
 			self.file = pathname
 			self.eI.statusBar.SetStatusText(f"Saving {self.file}")
 			self.textInput.SaveFile(self.file)
-			self.eI.statusBar.SetStatusText(f"Renaming tabs...")
-			self.eI.statusBar.SetStatusText("Ready")
+			self.eI.statusBar.SetStatusText("Renaming tabs...")
 		else:
 			self.eI.statusBar.SetStatusText(f"Saving {self.file}")
 			self.textInput.SaveFile(self.file)
-			self.eI.statusBar.SetStatusText("Ready")
+
+		self.eI.statusBar.SetStatusText("Ready")
 
 class EditorFrame(wx.Frame):
 	def __init__(self, parent, title):
 		super(EditorFrame, self).__init__(parent, title=title, size=(800, 600))
-		self.SetIcon(wx.Icon("Resources\\StoryTypewriter_256x256.png"))
+		self.SetIcon(wx.Icon(os.path.dirname(os.path.dirname(os.path.abspath(__file__))) + "\\Resources\\StoryTypewriter_256x256.png"))
 
 		self.smallFont = wx.Font(10, wx.MODERN, wx.NORMAL, wx.NORMAL, False, "Segoe UI")
 		self.InitUI()
@@ -134,7 +148,7 @@ class EditorFrame(wx.Frame):
 		self.notebook.AddPage(plainTab, "Welcome")
 		self.notebook.SetCloseButton(0, False)
 
-		self.dirTree = wx.GenericDirCtrl(self.panel, dir="D:\\Projects\\StoryTypewriter")
+		self.dirTree = wx.GenericDirCtrl(self.panel, dir=os.getcwd())
 
 		sizer = wx.BoxSizer()
 		sizer.Add(self.dirTree, 1, wx.EXPAND)
@@ -159,7 +173,7 @@ class EditorFrame(wx.Frame):
 		self.notebook.GetCurrentPage().writeChangesToFile()
 
 	def OpenFile(self, event):
-		with wx.FileDialog(self, "Open StoryScript file", wildcard="StoryScript files (*.sts)|*.sts|All files (*.*)|*.*",
+		with wx.FileDialog(self, "Open file", wildcard="StoryScript files (*.sts)|*.sts|Vivian files (*.viv)|*.viv|Crypt files (*.crypt)|*.crypt|All files (*.*)|*.*",
 					   style=wx.FD_OPEN | wx.FD_FILE_MUST_EXIST) as fileDialog:
 
 			if fileDialog.ShowModal() == wx.ID_CANCEL:
@@ -177,12 +191,7 @@ class EditorFrame(wx.Frame):
 			style=wx.DD_DEFAULT_STYLE)
 
 		# Show the dialog and retrieve the user response.
-		if dlg.ShowModal() == wx.ID_OK:
-			# load directory
-			path = dlg.GetPath()
-		else:
-			path = ""
-
+		path = dlg.GetPath() if dlg.ShowModal() == wx.ID_OK else ""
 		# Destroy the dialog.
 		dlg.Destroy()
 		self.dirTree.SetPath(path)
@@ -190,25 +199,27 @@ class EditorFrame(wx.Frame):
 	def aboutWindow(self, event):
 		win = tk.Tk()
 		win.title("About")
-		icon = Image.open("Resources\\StoryTypewriter_256x256.png")
+		segoetitle = ("Segoe UI", 14, "bold")
+		segoe = ("Segoe UI", 10)
+		icon = Image.open(os.path.dirname(os.path.dirname(os.path.abspath(__file__))) + "\\Resources\\StoryTypewriter_256x256.png")
 		icon = icon.resize((64, 64), Image.ANTIALIAS)
 		icontk = ImageTk.PhotoImage(icon)
 		win.iconphoto(False, icontk)
 		label1 = tk.Label(image=icontk)
 		label1.pack(side=tk.TOP, pady=(5, 0))
-		label2 = tk.Label(win, text="StoryTypewriter", font=("Segoe UI", 14, "bold"))
+		label2 = tk.Label(win, text="StoryTypewriter", font=segoetitle)
 		label2.pack(side=tk.TOP, padx=10, pady=10)
-		label3 = tk.Label(win, text=f"Python version: {python_version}", font=("Segoe UI", 10))
+		label3 = tk.Label(win, text=f"Python version: {python_version}", font=segoe)
 		label3.pack(side=tk.BOTTOM, padx=10, pady=(5, 15))
-		label4 = tk.Label(win, text=f"StoryTypewriter Version: {storytypewriter_version}", font=("Segoe UI", 10))
+		label4 = tk.Label(win, text=f"StoryTypewriter Version: {storytypewriter_version}", font=segoe)
 		label4.pack(side=tk.BOTTOM, padx=10, pady=(5, 1.25))
-		label5 = tk.Label(win, text=f"StoryScript Version: {storyscript_version}", font=("Segoe UI", 10))
+		label5 = tk.Label(win, text=f"StoryScript Version: {storyscript_version}", font=segoe)
 		label5.pack(side=tk.BOTTOM, padx=10, pady=(5, 1.25))
-		label5 = tk.Label(win, text=f"OS Version: {os_version}", font=("Segoe UI", 10))
+		label5 = tk.Label(win, text=f"OS Version: {os_version}", font=segoe)
 		label5.pack(side=tk.BOTTOM, padx=10, pady=(5, 1.25))
-		label6 = tk.Label(win, text=f"WxPython version: {wx_version}", font=("Segoe UI", 10))
+		label6 = tk.Label(win, text=f"WxPython version: {wx_version}", font=segoe)
 		label6.pack(side=tk.BOTTOM, padx=10, pady=(5, 1.25))
-		label7 = tk.Label(win, text=f"Tkinter version: {tk_version}", font=("Segoe UI", 10))
+		label7 = tk.Label(win, text=f"Tkinter version: {tk_version}", font=segoe)
 		label7.pack(side=tk.BOTTOM, padx=10, pady=(5, 1.25))
 		win.mainloop()
 
