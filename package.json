@@ -1,6 +1,7 @@
 {
   "name": "storytypewriter",
   "private": true,
+  "license": "MIT",
   "scripts": {
     "build": "parcel build ./src/index.html --dist-dir ./resources & neu build",
     "watch": "parcel watch ./src/index.html --dist-dir ./resources"
