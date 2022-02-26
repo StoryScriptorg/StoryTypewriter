@@ -1,0 +1,21 @@
+{
+  "name": "storytypewriter",
+  "private": true,
+  "scripts": {
+    "build": "parcel build ./src/index.html --dist-dir ./resources & neu build",
+    "watch": "parcel watch ./src/index.html --dist-dir ./resources"
+  },
+  "devDependencies": {
+    "@parcel/transformer-less": "^2.3.1",
+    "parcel": "^2.3.1"
+  },
+  "dependencies": {
+    "@codemirror/basic-setup": "^0.19.1",
+    "@codemirror/lang-markdown": "^0.19.6",
+    "gsap": "^3.9.1",
+    "highlight.js": "^11.4.0"
+  },
+  "alias": {
+    "process": false
+  }
+}
